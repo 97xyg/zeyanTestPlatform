@@ -26,8 +26,11 @@ class TestPlaneInfoSerializer(serializers.Serializer):
 
     def validate_test_plane_id(self,test_plane_id_value):
         test_plane_id = [test_plane_id.id for test_plane_id in TestPlane.objects.all()]
+        info_test_plane_id = [test_plane_id.test_plane_id for test_plane_id in TestPlaneInfo.objects.all()]
         if test_plane_id_value not in test_plane_id:
-            raise serializers.ValidationError("test_plane_id不存在")
+            raise serializers.ValidationError(f"test_plane_id：【{test_plane_id_value}】不存在")
+        if test_plane_id_value in info_test_plane_id:
+            raise serializers.ValidationError(f"test_plane_id：【{test_plane_id_value}】已存在")
         return test_plane_id_value
 
     test_plane_id = serializers.IntegerField(help_text='测试计划id', write_only=True)

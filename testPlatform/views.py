@@ -1,7 +1,9 @@
 # Create your views here.
+import json
+
 from rest_framework import status
 from rest_framework.decorators import api_view
-from rest_framework.generics import ListCreateAPIView, UpdateAPIView
+from rest_framework.generics import ListCreateAPIView
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -9,6 +11,7 @@ from rest_framework.views import APIView
 from testPlatform.models import TestPlane, TestCase, TestPlaneInfo
 from testPlatform.serializer import TestPlaneSerializer, TestPlaneInfoSerializer, TestCaseSerializer
 from zeyanTestPlatform.common.paging import MyPageNumberPagination
+from zeyanTestPlatform.common.responeContent import my_response
 
 
 class TestPlaneView(APIView):
@@ -33,7 +36,7 @@ class TestPlaneView(APIView):
         ser = TestPlaneSerializer(data=data)  # 验证数据
         ser.is_valid(raise_exception=True)  # 验证方法
         ser.save()  # 保存数据
-        return Response(ser.data)  # 返回结果
+        return Response(my_response(True,ser.data))  # 返回结果
 
 
 @api_view(['DELETE', 'PUT'])
@@ -52,15 +55,15 @@ def test_plane_detail(request, pk):
     if request.method == 'DELETE':
         test_plane.is_delete = 1  # 1表示逻辑删除
         test_plane.save()
-        return Response({'msg': "删除成功"})
+        return Response(my_response(True,{},"删除成功"))
 
     elif request.method == "PUT":
         ser = TestPlaneSerializer(test_plane, request.data)
         if ser.is_valid():
             test_plane.__dict__.update(**request.data)  # 更新多个字段，传几个更新几个
             test_plane.save()  # 保存结果
-            return Response(ser.data)  # 返回结果
-        return Response(ser.errors, status.HTTP_400_BAD_REQUEST)
+            return Response(my_response(True,ser.data))  # 返回结果
+        return Response(my_response(False,ser.errors), status.HTTP_400_BAD_REQUEST)
 
 
 class TestPlaneInfoView(APIView):
@@ -84,13 +87,22 @@ class TestPlaneInfoView(APIView):
             test_plane_info.delete()
         except TestPlaneInfo.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        return Response({'msg': "删除成功"})
+        return Response(my_response(True,'{"msg": "删除成功"}'))
 
     def get(self, request: Request):
         test_plane_id = request.query_params.get("test_plane_id")
         test_plane_info: TestPlaneInfo = TestPlaneInfo.objects.filter(test_plane_id=test_plane_id).first()
-        ser = TestPlaneInfoSerializer(test_plane_info)
-        return Response(ser.data)
+        try:
+            test_global = json.loads(test_plane_info.test_global)
+        except:
+            return Response(my_response(True,'{"msg": "改id不存在"}'))
+        env = test_plane_info.env
+        login_info = test_plane_info.login_info
+        return Response(my_response(True,{
+            "env":env,
+            "test_global":test_global,
+            "login_info":login_info
+        }))
 
     def put(self, request: Request):
         test_plane_id = request.data.get("test_plane_id")
@@ -103,11 +115,11 @@ class TestPlaneInfoView(APIView):
         if ser.is_valid():
             test_plane_info.__dict__.update(**request.data)
             test_plane_info.save()
-            return Response(ser.data)
-        return Response(ser.errors)
+            return Response(my_response(True,ser.data))
+        return Response(my_response(False,ser.errors))
 
 
-class TestCaseView(ListCreateAPIView, UpdateAPIView):
+class TestCaseView(ListCreateAPIView):
     '''
     get:
     获取测试用例
@@ -130,5 +142,5 @@ class TestCaseView(ListCreateAPIView, UpdateAPIView):
         if ser.is_valid():
             query_result.__dict__.update(**request.data)
             query_result.save()
-            return Response(ser.data)
+            return Response(my_response(True,ser.data))
         return Response(ser.errors)
